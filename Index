@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImobiSmart Agro - Avaliação de Precisão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React e Babel para rodar tudo em um único arquivo -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-transition { transition: all 0.3s ease; }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #059669;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Ícones em SVG para evitar dependências externas
+        const Icons = {
+            Leaf: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8a7 7 0 0 1-10 10Z"/><path d="M11 20c-1.2 0-2-1-2-1.5s.8-1.5 2-1.5 2 1 2 1.5-.8 1.5-2 1.5Z"/><path d="M3 22c0-3 3-5 5-5"/></svg>,
+            Map: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>,
+            Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+        };
+
+        const SALARIO_MINIMO = 1412.00;
+
+        function App() {
+            const [tab, setTab] = useState('avaliar');
+            const [resultado, setResultado] = useState(null);
+            
+            // Estado do Solo e Terreno
+            const [area, setArea] = useState('');
+            const [multSM, setMultSM] = useState(1);
+            const [solo, setSolo] = useState(1.0);
+            const [culturas, setCulturas] = useState([]);
+            const [novaPlanta, setNovaPlanta] = useState({ nome: '', tipo: 'frutifera', qtd: '' });
+
+            // Estado da Vistoria
+            const [aluguel, setAluguel] = useState('');
+            const [nota, setNota] = useState(5);
+            const [aluguelFinal, setAluguelFinal] = useState(null);
+
+            const pesosCulturas = {
+                frutifera: 0.05,  // 5% SM
+                madeireira: 0.15, // 15% SM
+                medicinal: 0.08,  // 8% SM
+                ornamental: 0.03  // 3% SM
+            };
+
+            const addCultura = () => {
+                if (novaPlanta.nome && novaPlanta.qtd) {
+                    setCulturas([...culturas, { ...novaPlanta, id: Date.now() }]);
+                    setNovaPlanta({ nome: '', tipo: 'frutifera', qtd: '' });
+                }
+            };
+
+            const calcularTudo = () => {
+                const valorBase = (area * multSM * SALARIO_MINIMO) * solo;
+                const valorPlantas = culturas.reduce((acc, c) => acc + (c.qtd * SALARIO_MINIMO * pesosCulturas[c.tipo]), 0);
+                setResultado(valorBase + valorPlantas);
+            };
+
+            const avaliarVistoria = () => {
+                const valor = parseFloat(aluguel);
+                if (nota >= 8) {
+                    setAluguelFinal(valor * 0.9); // Desconto de 10%
+                } else {
+                    setAluguelFinal(false);
+                }
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen flex flex-col">
+                    {/* Header */}
+                    <header className="bg-emerald-700 text-white p-6 rounded-b-[2.5rem] shadow-xl">
+                        <div className="flex items-center gap-3">
+                            <Icons.Leaf />
+                            <div>
+                                <h1 className="text-xl font-black">ImobiSmart Agro</h1>
+                                <p className="text-xs opacity-80 uppercase tracking-tighter">Gestão Patrimonial por SM</p>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Tabs */}
+                    <nav className="flex justify-around bg-white m-4 p-1 rounded-2xl shadow-sm border border-slate-100">
+                        <button onClick={() => setTab('avaliar')} className={`flex-1 py-3 text-xs font-bold rounded-xl ${tab === 'avaliar' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400'}`}>AVALIAR TERRA</button>
+                        <button onClick={() => setTab('vistoria')} className={`flex-1 py-3 text-xs font-bold rounded-xl ${tab === 'vistoria' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400'}`}>VISTORIA</button>
+                    </nav>
+
+                    <main className="px-4 flex-grow pb-10">
+                        {tab === 'avaliar' ? (
+                            <div className="space-y-4 animate-in fade-in duration-500">
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase">Qualidade do Solo</label>
+                                    <select onChange={(e) => setSolo(e.target.value)} className="w-full mt-1 p-3 bg-slate-50 rounded-xl text-sm outline-none border border-slate-100">
+                                        <option value="1.0">Comum / Misto</option>
+                                        <option value="0.8">Arenoso (Baixa Produtividade)</option>
+                                        <option value="1.3">Argiloso (Boa Retenção)</option>
+                                        <option value="2.0">Terra Roxa (Premium)</option>
+                                    </select>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Área (m²)</label>
+                                            <input type="number" value={area} onChange={e => setArea(e.target.value)} className="w-full mt-1 p-3 bg-slate-50 rounded-xl text-sm border border-slate-100" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Mult. SM/m²</label>
+                                            <input type="number" value={multSM} onChange={e => setMultSM(e.target.value)} className="w-full mt-1 p-3 bg-slate-50 rounded-xl text-sm border border-slate-100" />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 border-t pt-4">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Catálogo de Culturas</label>
+                                        <div className="flex gap-2 mt-2">
+                                            <input placeholder="Ex: Mangueira" value={novaPlanta.nome} onChange={e => setNovaPlanta({...novaPlanta, nome: e.target.value})} className="flex-1 p-2 bg-slate-50 rounded-lg text-xs" />
+                                            <select value={novaPlanta.tipo} onChange={e => setNovaPlanta({...novaPlanta, tipo: e.target.value})} className="p-2 bg-slate-50 rounded-lg text-xs">
+                                                <option value="frutifera">Frutífera</option>
+                                                <option value="madeireira">Madeireira</option>
+                                                <option value="medicinal">Medicinal</option>
+                                                <option value="ornamental">Ornamental</option>
+                                            </select>
+                                            <input type="number" placeholder="Qtd" value={novaPlanta.qtd} onChange={e => setNovaPlanta({...novaPlanta, qtd: e.target.value})} className="w-16 p-2 bg-slate-50 rounded-lg text-xs" />
+                                            <button onClick={addCultura} className="bg-emerald-600 text-white p-2 rounded-lg">+</button>
+                                        </div>
+
+                                        <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
+                                            {culturas.map(c => (
+                                                <div key={c.id} className="flex justify-between items-center bg-emerald-50 p-2 rounded-xl border border-emerald-100">
+                                                    <span className="text-[10px] font-bold text-emerald-800">{c.nome} ({c.tipo}) x{c.qtd}</span>
+                                                    <button onClick={() => setCulturas(culturas.filter(x => x.id !== c.id))} className="text-red-400"><Icons.Trash /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button onClick={calcularTudo} className="w-full bg-emerald-700 text-white font-black py-4 rounded-2xl mt-6 shadow-lg shadow-emerald-100 active:scale-95 transition-transform">
+                                        CALCULAR VALOR AGRO
+                                    </button>
+                                </div>
+
+                                {resultado && (
+                                    <div className="bg-emerald-900 text-white p-6 rounded-[2rem] text-center shadow-xl">
+                                        <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Patrimônio Avaliado</p>
+                                        <h2 className="text-3xl font-black mt-1 text-emerald-100">R$ {resultado.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                                        <p className="text-xs mt-2 text-emerald-400 font-bold uppercase tracking-tighter">{(resultado/SALARIO_MINIMO).toFixed(1)} Salários Mínimos</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
+                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                    <h3 className="font-black text-slate-700 mb-4">Checklist de Conservação</h3>
+                                    
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aluguel Base (R$)</label>
+                                    <input type="number" value={aluguel} onChange={e => setAluguel(e.target.value)} className="w-full mt-1 p-3 bg-slate-50 rounded-xl text-sm mb-4 outline-none" />
+
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado do Imóvel</label>
+                                        <span className="text-sm font-black text-emerald-600">{nota}/10</span>
+                                    </div>
+                                    <input type="range" min="1" max="10" value={nota} onChange={e => setNota(e.target.value)} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                    
+                                    <div className="mt-6 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                                        <p className="text-[11px] text-blue-700 leading-tight"><strong>Regra de Ouro:</strong> Conservação acima de 8 gera desconto automático de 10% no próximo contrato (Benefício Vitalício).</p>
+                                    </div>
+
+                                    <button onClick={avaliarVistoria} className="w-full bg-slate-800 text-white font-black py-4 rounded-2xl mt-6">PROCESSAR VISTORIA</button>
+                                </div>
+
+                                {aluguelFinal !== null && (
+                                    <div className={`p-6 rounded-[2rem] text-center border-4 ${aluguelFinal ? 'bg-emerald-50 border-emerald-500 shadow-emerald-100' : 'bg-red-50 border-red-200'} shadow-xl`}>
+                                        {aluguelFinal ? (
+                                            <div>
+                                                <Icons.Check />
+                                                <h4 className="text-emerald-800 font-black mt-2">BÔNUS APROVADO!</h4>
+                                                <p className="text-xs text-emerald-600 font-bold mb-4 uppercase">Novo Aluguel Vitalício:</p>
+                                                <p className="text-4xl font-black text-emerald-700">R$ {aluguelFinal.toLocaleString('pt-BR')}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-red-700 font-bold">Inquilino não atingiu a nota mínima para o desconto vitalício.</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer Nav */}
+                    <footer className="fixed bottom-0 w-full max-w-md bg-white/80 backdrop-blur-md border-t p-4 flex justify-around">
+                        <div className="flex flex-col items-center text-emerald-700 opacity-100">
+                            <Icons.Map />
+                            <span className="text-[9px] font-black uppercase mt-1">Mapa</span>
+                        </div>
+                        <div className="flex flex-col items-center text-slate-300">
+                            <Icons.Leaf />
+                            <span className="text-[9px] font-black uppercase mt-1">Agro</span>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
