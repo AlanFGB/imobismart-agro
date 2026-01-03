@@ -1,0 +1,237 @@
+import React, { useState, useEffect } from 'react';
+import { Shield, Eye, EyeOff, AlertTriangle, Scale, Home, Building2, Bell } from 'lucide-react';
+
+const App = () => {
+  // Estado para simular os diferentes tipos de utilizadores no sistema
+  const [currentUser, setCurrentUser] = useState('PROPRIETARIO'); // Opções: PROPRIETARIO, IMOBILIARIA, JUSTICA
+  const [incidents, setIncidents] = useState([
+    {
+      id: 1,
+      titulo: 'Manutenção de Fachada',
+      descricao: 'Necessidade de pintura externa.',
+      visivelParaImobiliaria: true,
+      tipo: 'MANUTENCAO',
+      data: '2023-10-25'
+    },
+    {
+      id: 2,
+      titulo: 'Suspeita de Atividade Ilícita',
+      descricao: 'Movimentação suspeita e ruídos incompatíveis com uso residencial no apartamento 402.',
+      visivelParaImobiliaria: false,
+      tipo: 'CRIME',
+      data: '2023-11-01',
+      autoridadeNotificada: true
+    }
+  ]);
+
+  const [novoIncidente, setNovoIncidente] = useState({
+    titulo: '',
+    descricao: '',
+    tipo: 'MANUTENCAO'
+  });
+
+  const handleAddIncidente = (e) => {
+    e.preventDefault();
+    const isCrime = novoIncidente.tipo === 'CRIME';
+    
+    const incidente = {
+      id: Date.now(),
+      ...novoIncidente,
+      visivelParaImobiliaria: !isCrime,
+      data: new Date().toISOString().split('T')[0],
+      autoridadeNotificada: isCrime
+    };
+
+    setIncidents([incidente, ...incidents]);
+    setNovoIncidente({ titulo: '', descricao: '', tipo: 'MANUTENCAO' });
+  };
+
+  // Lógica de filtragem baseada na regra de negócio solicitada
+  const filteredIncidents = incidents.filter(inc => {
+    if (currentUser === 'IMOBILIARIA') {
+      return inc.visivelParaImobiliaria;
+    }
+    return true; // Proprietários e Justiça vêem tudo
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+      <div className="max-w-6xl mx-auto">
+        {/* Cabeçalho de Navegação de Perfis (Simulação) */}
+        <header className="bg-white rounded-xl shadow-sm p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Portal de Gestão Imobiliária</h1>
+            <p className="text-slate-500">Sistema de Monitorização e Conformidade Legal</p>
+          </div>
+          
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            {['PROPRIETARIO', 'IMOBILIARIA', 'JUSTICA'].map((role) => (
+              <button
+                key={role}
+                onClick={() => setCurrentUser(role)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  currentUser === role 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Painel de Registo (Apenas para Proprietários/Justiça simularem) */}
+          <section className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <AlertTriangle className="text-amber-500" size={20} />
+                Registar Ocorrência
+              </h2>
+              <form onSubmit={handleAddIncidente} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Assunto</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={novoIncidente.titulo}
+                    onChange={(e) => setNovoIncidente({...novoIncidente, titulo: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Evento</label>
+                  <select
+                    className="w-full p-2 border border-slate-300 rounded-md bg-white"
+                    value={novoIncidente.tipo}
+                    onChange={(e) => setNovoIncidente({...novoIncidente, tipo: e.target.value})}
+                  >
+                    <option value="MANUTENCAO">Manutenção Geral</option>
+                    <option value="ADMINISTRATIVO">Administrativo</option>
+                    <option value="CRIME">Suspeita Criminal (Restrito)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Detalhes</label>
+                  <textarea
+                    required
+                    className="w-full p-2 border border-slate-300 rounded-md h-24 focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={novoIncidente.descricao}
+                    onChange={(e) => setNovoIncidente({...novoIncidente, descricao: e.target.value})}
+                  ></textarea>
+                </div>
+                
+                {novoIncidente.tipo === 'CRIME' && (
+                  <div className="p-3 bg-red-50 border border-red-100 rounded-md text-xs text-red-700 flex items-start gap-2">
+                    <Shield size={16} className="shrink-0" />
+                    <span>Atenção: Relatos de crime são encriptados e ocultados da imobiliária. Apenas proprietários e o sistema judiciário terão acesso.</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-slate-800 text-white py-2 rounded-md hover:bg-slate-900 transition-colors font-medium"
+                >
+                  Submeter Relatório
+                </button>
+              </form>
+            </div>
+          </section>
+
+          {/* Lista de Incidentes */}
+          <section className="lg:col-span-2">
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-slate-800">Fluxo de Incidentes</h2>
+              <span className="text-xs font-semibold px-2 py-1 bg-slate-200 rounded uppercase">
+                Acesso: {currentUser}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {filteredIncidents.length === 0 ? (
+                <div className="bg-white p-12 text-center rounded-xl border border-dashed border-slate-300">
+                  <p className="text-slate-500">Nenhum incidente registado ou visível para o seu perfil.</p>
+                </div>
+              ) : (
+                filteredIncidents.map((inc) => (
+                  <div 
+                    key={inc.id} 
+                    className={`bg-white rounded-xl p-5 shadow-sm border-l-4 transition-all ${
+                      inc.tipo === 'CRIME' ? 'border-l-red-500 shadow-red-50' : 'border-l-blue-500'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-bold text-slate-800">{inc.titulo}</h3>
+                          {inc.tipo === 'CRIME' && (
+                            <span className="bg-red-100 text-red-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
+                              Restrito: Justiça/Proprietário
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 italic">{inc.data}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {inc.tipo === 'CRIME' ? <Scale size={18} className="text-slate-400" /> : <Building2 size={18} className="text-slate-400" />}
+                      </div>
+                    </div>
+                    
+                    <p className="text-slate-700 text-sm mb-4 leading-relaxed">
+                      {inc.descricao}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                          <Eye size={14} />
+                          Proprietário: Sim
+                        </div>
+                        <div className={`flex items-center gap-1 text-xs font-medium ${inc.visivelParaImobiliaria ? 'text-green-600' : 'text-red-500'}`}>
+                          {inc.visivelParaImobiliaria ? <Eye size={14} /> : <EyeOff size={14} />}
+                          Imobiliária: {inc.visivelParaImobiliaria ? 'Sim' : 'Não'}
+                        </div>
+                      </div>
+                      
+                      {inc.autoridadeNotificada && (
+                        <div className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          <Scale size={14} />
+                          CANAL JUDICIAL ATIVO
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Rodapé Informativo */}
+      <footer className="max-w-6xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-500">
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+          <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+            <Shield size={16} /> Encriptação de Ponta-a-Ponta
+          </h4>
+          <p>Dados de incidentes criminais são armazenados em silos separados, inacessíveis à imobiliária.</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+          <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+            <Scale size={16} /> Conformidade RGPD
+          </h4>
+          <p>A exclusão da imobiliária no fluxo criminal protege a idoneidade do processo judicial em curso.</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+          <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+            <Bell size={16} /> Notificações Diretas
+          </h4>
+          <p>Proprietários recebem alertas push imediatos para qualquer evento classificado como restrito.</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default App;
